@@ -35,7 +35,7 @@ def log_p_m_x( m, x, myTheta):
         See equation 2 of handout
     '''
     M, d = myTheta.Sigma.shape
-    bottom = np.log(np.sum([myTheta.omega[i] + logb_m_x(i, x, myTheta) for i in range M]))
+    bottom = np.log(np.sum([myTheta.omega[i] + logb_m_x(i, x, myTheta) for i in range(M)]))
     return myTheta.omega[m] + log_b_m_x(m, x, myTheta) - bottom
 
     
@@ -51,8 +51,7 @@ def logLik( log_Bs, myTheta ):
 
         See equation 3 of the handout
     '''
-    print( 'TODO' )
-
+    return np.sum(logsumexp(log_Bs + np.log(myTheta.omega), axis=0))
     
 def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
     ''' Train a model for the given speaker. Returns the theta (omega, mu, sigma)'''
