@@ -6,6 +6,7 @@ import random
 # dataDir = '/u/cs401/A3/data/'
 dataDir = "../data/"
 
+
 class theta:
     def __init__(self, name, M=8,d=13):
         self.name = name
@@ -23,7 +24,7 @@ def log_b_m_x( m, x, myTheta, preComputedForM=[]):
 
     '''
     M, d = myTheta.Sigma.shape
-    top = -1/2 * np.sum(np.square(x[m]-myTheta.mu[m])/myTheta.Sigma[m])
+    top = -1/2 * np.sum(np.square(x-myTheta.mu[m])/myTheta.Sigma[m])
     pi = d/2*2*np.log(np.pi)
     root = 1/2*np.log(np.sum(myTheta.Sigma))
     return top - pi - root
@@ -33,7 +34,9 @@ def log_p_m_x( m, x, myTheta):
     ''' Returns the log probability of the m^{th} component given d-dimensional vector x, and model myTheta
         See equation 2 of handout
     '''
-    print ( 'TODO' )
+    M, d = myTheta.Sigma.shape
+    bottom = np.log(np.sum([myTheta.omega[i] + logb_m_x(i, x, myTheta) for i in range M]))
+    return myTheta.omega[m] + log_b_m_x(m, x, myTheta) - bottom
 
     
 def logLik( log_Bs, myTheta ):
