@@ -52,11 +52,56 @@ def logLik( log_Bs, myTheta ):
         See equation 3 of the handout
     '''
     return np.sum(logsumexp(log_Bs + np.log(myTheta.omega), axis=0))
-    
+
+def log_Bs(X, myTheta):
+
+    M, d = myTheta.Sigma.shape
+    T = X.shape[0]
+    log_Bs = np.zeros((M, T))
+
+    for m in range(M):
+        top = np.square(X - myTheta.mu[m]) / myTheta.Sigma[m]
+        pi = np.log(2 * np.pi)
+        bot = 1. / 2 * np.sum(np.log(np.square(np.prod(myTheta.Sigma[m]))))
+        log_bs = - np.sum(top, axis=1) - (d / 2 * pi + bot)
+        log_Bs[m] = log_bs
+
+    return log_Bs
+
+
 def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
     ''' Train a model for the given speaker. Returns the theta (omega, mu, sigma)'''
+
     myTheta = theta( speaker, M, X.shape[1] )
-    print ('TODO')
+    T, d = X.shape
+    print(T == X.shape[0])
+    indList = np.random.choice(T, M, replace=False)
+    myTheta.mu = X[ind_list]
+    myTheta.sigma[:,:] = 1
+
+    myTheta.omega[:,0] = 1/M
+
+    previousL = float("-inf")
+    diff = float("-inf")
+    i= 0
+
+    while (i <= maxIter and diff > epsilon):
+        # calculate log Bs to get current log likelihood
+        log_Bs = log_Bs(X, myTheta)
+        curL = loglik(log_Bs, myTheta)
+        diff = curL - previousL
+        logTop = log_Bs + np.log(myTheta.omega)
+        log_Ps = logTop - logsumexp(logTop, axis=0)
+        i += 1
+        previousL = curL
+        # update
+        for m in range(M):
+            prob = np.exp(log_Ps[m])
+            probSum = np.sum(prob)
+            myTheta.omega[m] = probSum/T
+            myTheta.mu[m] = np.dot(prob, X) / probSum
+            myTheta.Sigma[m] = (np.dot(prob, np.square(X))/probSum) - (myTheta.mu[m]**2)
+            
     return myTheta
 
 
