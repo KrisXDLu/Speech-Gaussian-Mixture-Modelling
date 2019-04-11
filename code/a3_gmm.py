@@ -57,15 +57,12 @@ def log_Bs(X, myTheta):
 
     M, d = myTheta.Sigma.shape
     T = X.shape[0]
-    log_Bs = np.zeros((M, T))
 
-    for m in range(M):
-        top = np.square(X - myTheta.mu[m]) / myTheta.Sigma[m]
-        pi = np.log(2 * np.pi)
-        bot = 1. / 2 * np.sum(np.log(np.square(np.prod(myTheta.Sigma[m]))))
-        log_bs = - np.sum(top, axis=1) - (d / 2 * pi + bot)
-        log_Bs[m] = log_bs
-
+    log_Bs = [- np.sum(np.square(X - myTheta.mu[m]) / myTheta.Sigma[m], axis=1) 
+                - (d / 2 * np.log(2 * np.pi) 
+                    + 1. / 2 * np.sum(np.log(np.square(np.prod(myTheta.Sigma[m]))))) 
+                        for m in range(M)]
+        
     return log_Bs
 
 
@@ -101,7 +98,7 @@ def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
             myTheta.omega[m] = probSum/T
             myTheta.mu[m] = np.dot(prob, X) / probSum
             myTheta.Sigma[m] = (np.dot(prob, np.square(X))/probSum) - (myTheta.mu[m]**2)
-            
+
     return myTheta
 
 
@@ -119,7 +116,28 @@ def test( mfcc, correctID, models, k=5 ):
         the format of the log likelihood (number of decimal places, or exponent) does not matter
     '''
     bestModel = -1
-    print ('TODO')
+    bestL = float("-inf")
+
+    T, d = mfcc.shape
+    M = models[0].omega.shape[0]
+
+    modelLik = []
+
+    for i in range(len(models)):
+        myTheta = models[i]
+        log_Bs = log_Bs(mfcc, myTheta)
+        log_Lik = logLik(log_Bs, myTheta)
+        modelLik.append((myTheta, log_Lik))
+        if log_Lik > bestL:
+            bestModel = i
+            bestL = log_Lik
+
+    modelLik.sort(key=lambda x: x[1], reverse=True)
+    
+    print(models[correctID].name)
+    for i in range(k):
+        print(modelLik[i][0].name, modelLik[i][1])
+
     return 1 if (bestModel == correctID) else 0
 
 
