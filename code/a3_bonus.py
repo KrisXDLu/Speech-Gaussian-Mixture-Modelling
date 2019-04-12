@@ -2,6 +2,7 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 import os, fnmatch
 import random
+from sklearn.decomposition import PCA
 from scipy.special import logsumexp
 
 # dataDir = '/u/cs401/A3/data/'
@@ -152,46 +153,45 @@ if __name__ == "__main__":
     d = 13
     k = 5  # number of top speakers to display, <= 0 if none
     M = 8  # component num
-    # # M = 7
-    # M = 6
-    # # M = 5
     epsilon = 0.0
-    # maxIter = 20
-    # maxIter = 15
-    # maxIter = 10
-    maxIter = 5
-    i = 0
+    maxIter = 20
+    dimension = 10
+    # init PCA
+    pcaModel = PCA(n_components=dimension)
     # train a model for each speaker, and reserve data for testing
+    allData = np.empty((0,d))
     for subdir, dirs, files in os.walk(dataDir):
         for speaker in dirs:
-            # if i > 20:
-            #     break
-            # i += 1
-            # if i > 15:
-            #     break
-            # i += 1
-            # if i > 10:
-            #     break
-            # i += 1
-            print( speaker )
+            # print( speaker )
 
             files = fnmatch.filter(os.listdir( os.path.join( dataDir, speaker ) ), '*npy')
             random.shuffle( files )
-            
+            for file in files:
+                myMFCC = np.load(os.path.join(dataDir, speaker, file))
+                allData = np.append(allData, myMFCC, axis=0)
+    # allData = np.array(allData)
+    pcaModel.fit(allData)
+
+    for subdir, dirs, files in os.walk(dataDir):
+        for speaker in dirs:
+            files = fnmatch.filter(os.listdir( os.path.join( dataDir, speaker ) ), '*npy')
+            random.shuffle( files )
+
             testMFCC = np.load( os.path.join( dataDir, speaker, files.pop() ) )
             testMFCCs.append( testMFCC )
-
+        
             X = np.empty((0,d))
             for file in files:
                 myMFCC = np.load( os.path.join( dataDir, speaker, file ) )
                 X = np.append( X, myMFCC, axis=0)
-
-            trainThetas.append( train(speaker, X, M, epsilon, maxIter) )
+            X_pr = pcaModel.transform(X)
+            trainThetas.append( train(speaker, X_pr, M, epsilon, maxIter) )
 
     # evaluate 
     numCorrect = 0;
     for i in range(0,len(testMFCCs)):
-        numCorrect += test( testMFCCs[i], i, trainThetas, k ) 
+        test_pr = pcaModel.transform(testMFCCs[i])
+        numCorrect += test( test_pr, i, trainThetas, k ) 
     accuracy = 1.0*numCorrect/len(testMFCCs)
     print(accuracy)
 
