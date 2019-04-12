@@ -2,6 +2,7 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 import os, fnmatch
 import random
+from scipy.special import logsumexp
 
 # dataDir = '/u/cs401/A3/data/'
 dataDir = "../data/"
@@ -25,18 +26,18 @@ def log_b_m_x( m, x, myTheta, preComputedForM=[]):
     '''
     M, d = myTheta.Sigma.shape
     top = -1/2 * np.sum(np.square(x-myTheta.mu[m])/myTheta.Sigma[m])
-    pi = d/2*2*np.log(np.pi)
-    root = 1/2*np.log(np.sum(myTheta.Sigma))
-    return top - pi - root
+    pi = d/2*np.log(2*np.pi)
+    root = 1/2*np.sum(np.log(myTheta.Sigma[m]))
 
+    return top - pi - root
     
 def log_p_m_x( m, x, myTheta):
     ''' Returns the log probability of the m^{th} component given d-dimensional vector x, and model myTheta
         See equation 2 of handout
     '''
     M, d = myTheta.Sigma.shape
-    bottom = np.log(np.sum([myTheta.omega[i] + logb_m_x(i, x, myTheta) for i in range(M)]))
-    return myTheta.omega[m] + log_b_m_x(m, x, myTheta) - bottom
+    bottom = logsumexp([np.log(myTheta.omega[i]) + log_b_m_x(i, x, myTheta) for i in range(M)])
+    return np.log(myTheta.omega[m][0]) + log_b_m_x(m, x, myTheta) - bottom
 
     
 def logLik( log_Bs, myTheta ):
@@ -62,7 +63,7 @@ def log_Bs(X, myTheta):
                 - (d / 2 * np.log(2 * np.pi) 
                     + 1. / 2 * np.sum(np.log(np.square(np.prod(myTheta.Sigma[m]))))) 
                         for m in range(M)]
-        
+    
     return log_Bs
 
 
@@ -71,24 +72,23 @@ def train( speaker, X, M=8, epsilon=0.0, maxIter=20 ):
 
     myTheta = theta( speaker, M, X.shape[1] )
     T, d = X.shape
-    print(T == X.shape[0])
     indList = np.random.choice(T, M, replace=False)
-    myTheta.mu = X[ind_list]
-    myTheta.sigma[:,:] = 1
-
+    myTheta.mu = X[indList]
+    myTheta.Sigma[:,:] = 1
     myTheta.omega[:,0] = 1/M
 
     previousL = float("-inf")
-    diff = float("-inf")
-    i= 0
+    diff = float("inf")
+    i = 0
 
     while (i <= maxIter and diff > epsilon):
         # calculate log Bs to get current log likelihood
-        log_Bs = log_Bs(X, myTheta)
-        curL = loglik(log_Bs, myTheta)
-        diff = curL - previousL
-        logTop = log_Bs + np.log(myTheta.omega)
-        log_Ps = logTop - logsumexp(logTop, axis=0)
+        log_bs = log_Bs(X, myTheta)
+        curL = logLik(log_bs, myTheta)
+        diff = abs(curL - previousL)
+        # logTop = log_bs + np.log(myTheta.omega)
+        # log_Ps = logTop - logsumexp(logTop, axis=0)
+        log_Ps = [[log_p_m_x(i, X[j], myTheta) for j in range(T)] for i in range(M)]
         i += 1
         previousL = curL
         # update
@@ -125,12 +125,12 @@ def test( mfcc, correctID, models, k=5 ):
 
     for i in range(len(models)):
         myTheta = models[i]
-        log_Bs = log_Bs(mfcc, myTheta)
-        log_Lik = logLik(log_Bs, myTheta)
-        modelLik.append((myTheta, log_Lik))
-        if log_Lik > bestL:
+        my_log_Bs = log_Bs(mfcc, myTheta)
+        my_log_Lik = logLik(my_log_Bs, myTheta)
+        modelLik.append((myTheta, my_log_Lik))
+        if my_log_Lik > bestL:
             bestModel = i
-            bestL = log_Lik
+            bestL = my_log_Lik
 
     modelLik.sort(key=lambda x: x[1], reverse=True)
     
@@ -174,4 +174,5 @@ if __name__ == "__main__":
     for i in range(0,len(testMFCCs)):
         numCorrect += test( testMFCCs[i], i, trainThetas, k ) 
     accuracy = 1.0*numCorrect/len(testMFCCs)
+    print(accuracy)
 
